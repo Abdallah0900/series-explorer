@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10151f">
+<title>Series Explorer | اكتشف المسلسلات</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #10151f;
+  --panel: #191f2b;
+  --panel2: #202838;
+  --text: #f4f6fb;
+  --muted: #9ba8bb;
+  --accent: #62d5bd;
+  --border: #30394a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+.container { width: min(1200px, 94%); margin: auto; }
+header {
+  border-bottom: 1px solid var(--border);
+  background: #131a26;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.nav {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand { font-size: 21px; font-weight: 800; }
+.brand span { color: var(--accent); }
+.badge {
+  color: var(--accent);
+  border: 1px solid #315b57;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+.hero { padding: 38px 0 24px; }
+.eyebrow { color: var(--accent); font-size: 13px; font-weight: 700; }
+h1 { font-size: clamp(28px, 5vw, 43px); margin: 10px 0; }
+.hero p { color: var(--muted); line-height: 1.9; max-width: 650px; }
+.searchbox {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.searchbox input {
+  min-width: 0;
+  flex: 1;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 15px;
+  outline: none;
+}
+.searchbox input:focus { border-color: var(--accent); }
+.primary {
+  background: var(--accent);
+  color: #10201e;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 20px;
+  font-weight: 800;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 10px 0 28px;
+}
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 15px;
+  border-radius: 14px;
+}
+.stat strong { display: block; font-size: 23px; }
+.stat span { color: var(--muted); font-size: 12px; }
+.layout {
+  display: grid;
+  grid-template-columns: 235px minmax(0, 1fr);
+  gap: 22px;
+  padding-bottom: 45px;
+}
+.filters {
+  align-self: start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+}
+.filters h2 { font-size: 17px; margin: 0 0 18px; }
+.field { margin-bottom: 17px; }
+.field label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.field select, .field input {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 11px;
+}
+.reset {
+  width: 100%;
+  padding: 11px;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.results-head h2 { margin: 0; font-size: 20px; }
+.results-head span { color: var(--muted); font-size: 13px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+}
+.card {
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  min-width: 0;
+  transition: transform .15s, border-color .15s;
+}
+.card:hover { transform: translateY(-3px); border-color: #547c7a; }
+.poster {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--panel2);
+  display: block;
+  object-fit: cover;
+}
+.poster-placeholder {
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #263549, #17212d);
+  color: var(--accent);
+  font-size: 28px;
+  font-weight: 800;
+}
+.card-body { padding: 12px; }
+.card h3 { font-size: 15px; margin: 0 0 8px; line-height: 1.7; }
+.meta { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.card-actions { margin-top: 12px; }
+.card-actions a {
+  display: block;
+  text-decoration: none;
+  text-align: center;
+  color: var(--accent);
+  background: #203832;
+  padding: 9px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.notice {
+  background: #202838;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 20px;
+  border-radius: 13px;
+  line-height: 1.9;
+}
+.notice strong { color: var(--text); }
+.empty {
+  display: none;
+  text-align: center;
+  padding: 40px 15px;
+  color: var(--muted);
+}
+footer {
+  border-top: 1px solid var(--border);
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .filters { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  .filters h2 { grid-column: 1 / -1; margin-bottom: 0; }
+  .field { margin: 0; }
+  .reset { align-self: end; }
+  .grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .card-body { padding: 10px; }
+  .card h3 { font-size: 13px; }
+}
+@media (max-width: 380px) {
+  .badge { display: none; }
+  .searchbox { flex-direction: column; }
+  .primary { padding: 12px; }
+  .stats { gap: 7px; }
+  .stat { padding: 10px; }
+  .stat strong { font-size: 19px; }
+  .filters { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="container nav">
+    <div class="brand">Series <span>Explorer</span></div>
+    <div class="badge">كتالوج المسلسلات</div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <div class="eyebrow">اكتشف عملك القادم</div>
+    <h1>كل المسلسلات في مكان واحد</h1>
+    <p>
+      ابحث بجزء من اسم المسلسل، واستكشف النتائج حسب التصنيف وسنة الإنتاج.
+      الكتالوج في هذه النسخة التجريبية جاهز لربط بيانات المسلسلات الفعلية.
+    </p>
+    <form class="searchbox" id="searchForm">
+      <input id="search" type="search"
+        placeholder="اكتب اسم المسلسل بالعربي أو الإنجليزي..."
+        aria-label="ابحث عن مسلسل">
+      <button class="primary" type="submit">بحث</button>
+    </form>
+  </section>
+
+  <section class="stats" aria-label="إحصائيات الكتالوج">
+    <div class="stat"><strong id="seriesCount">0</strong><span>مسلسل في البيانات المحملة</span></div>
+    <div class="stat"><strong id="episodeCount">0</strong><span>حلقة في البيانات المحملة</span></div>
+    <div class="stat"><strong id="updated">—</strong><span>آخر تحديث للكتالوج</span></div>
+  </section>
+
+  <section class="layout">
+    <aside class="filters">
+      <h2>تصفية النتائج</h2>
+      <div class="field">
+        <label for="genre">التصنيف</label>
+        <select id="genre"><option value="">كل التصنيفات</option></select>
+      </div>
+      <div class="field">
+        <label for="year">سنة الإنتاج</label>
+        <select id="year"><option value="">كل السنوات</option></select>
+      </div>
+      <div class="field">
+        <label for="sort">ترتيب النتائج</label>
+        <select id="sort">
+          <option value="recent">الأحدث إضافة</option>
+          <option value="name">الاسم أبجديًا</option>
+          <option value="episodes">الأكثر حلقات</option>
+        </select>
+      </div>
+      <button class="reset" id="reset" type="button">مسح الفلاتر</button>
+    </aside>
+
+    <section>
+      <div class="results-head">
+        <h2>المسلسلات</h2>
+        <span id="resultCount">0 نتيجة</span>
+      </div>
+
+      <div class="notice" id="loading">
+        <strong>الكتالوج جاهز للربط بالبيانات</strong><br>
+        لم يتم تحميل قائمة المسلسلات بعد. ستظهر هنا المسلسلات الفعلية بعد إضافة ملف البيانات وربطه بالموقع.
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty">لا توجد نتائج مطابقة. جرّب تغيير البحث أو الفلاتر.</div>
+    </section>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    Series Explorer — كتالوج مستقل لتنظيم بيانات المسلسلات وروابط صفحاتها الأصلية.
+    هذا الموقع لا يستضيف حلقات الفيديو.
+  </div>
+</footer>
+
+<script>
+const state = {
+  series: [],
+  episodes: [],
+  loaded: false
+};
+
+const $ = id => document.getElementById(id);
+
+function normalize(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/[ًٌٍَُِّْـ]/g, "")
+    .trim();
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function buildFilters() {
+  const genres = [...new Set(state.series.flatMap(s => s.genres || []))].sort();
+  const years = [...new Set(state.series.map(s => s.year).filter(Boolean))].sort((a,b) => b-a);
+
+  $("genre").innerHTML = '<option value="">كل التصنيفات</option>' +
+    genres.map(g => `<option value="${escapeHTML(g)}">${escapeHTML(g)}</option>`).join("");
+
+  $("year").innerHTML = '<option value="">كل السنوات</option>' +
+    years.map(y => `<option value="${escapeHTML(y)}">${escapeHTML(y)}</option>`).join("");
+}
+
+function render() {
+  const query = normalize($("search").value);
+  const genre = $("genre").value;
+  const year = $("year").value;
+  const sort = $("sort").value;
+
+  let results = state.series.filter(s => {
+    const searchable = normalize([s.title, s.originalTitle, ...(s.aliases || [])].join(" "));
+    return (!query || searchable.includes(query)) &&
+      (!genre || (s.genres || []).includes(genre)) &&
+      (!year || String(s.year || "") === year);
+  });
+
+  if (sort === "name") {
+    results.sort((a,b) => a.title.localeCompare(b.title, "ar"));
+  } else if (sort === "episodes") {
+    results.sort((a,b) => (b.episodeCount || 0) - (a.episodeCount || 0));
+  } else {
+    results.sort((a,b) => String(b.updated || "").localeCompare(String(a.updated || "")));
+  }
+
+  $("grid").innerHTML = results.map(s => {
+    const title = escapeHTML(s.title || "مسلسل بدون اسم");
+    const image = s.image
+      ? `<img class="poster" src="${escapeHTML(s.image)}" alt="${title}" loading="lazy" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>TV</div>'">`
+      : `<div class="poster-placeholder">TV</div>`;
+
+    return `<article class="card">
+      ${image}
+      <div class="card-body">
+        <h3>${title}</h3>
+        <div class="meta">
+          ${s.year ? `السنة: ${escapeHTML(s.year)}<br>` : ""}
+          ${(s.genres || []).length ? `التصنيف: ${escapeHTML(s.genres.join("، "))}<br>` : ""}
+          الحلقات: ${Number(s.episodeCount) || 0}
+        </div>
+        <div class="card-actions">
+          <a href="${escapeHTML(s.url || "#")}" target="_blank" rel="noopener noreferrer">صفحة المسلسل الأصلية</a>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+
+  $("seriesCount").textContent = state.series.length.toLocaleString("ar-EG");
+  $("episodeCount").textContent = state.episodes.length.toLocaleString("ar-EG");
+  $("resultCount").textContent = `${results.length.toLocaleString("ar-EG")} نتيجة`;
+  $("empty").style.display = state.loaded && results.length === 0 ? "block" : "none";
+  $("loading").style.display = state.loaded ? "none" : "block";
+}
+
+async function loadCatalog() {
+  try {
+    const response = await fetch("./data/catalog.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("Catalog not available");
+
+    const data = await response.json();
+    state.series = Array.isArray(data.series) ? data.series : [];
+    state.episodes = Array.isArray(data.episodes) ? data.episodes : [];
+    state.loaded = true;
+
+    $("updated").textContent = data.updatedAt
+      ? new Date(data.updatedAt).toLocaleDateString("ar-EG")
+      : "—";
+
+    buildFilters();
+  } catch (error) {
+    $("loading").innerHTML =
+      "<strong>في انتظار ملف البيانات</strong><br>" +
+      "لم يُضف ملف data/catalog.json بعد. الواجهة تعمل، وسنضيف نظام جمع البيانات في الخطوات التالية.";
+  }
+  render();
+}
+
+$("searchForm").addEventListener("submit", event => {
+  event.preventDefault();
+  render();
+});
+$("search").addEventListener("input", render);
+$("genre").addEventListener("change", render);
+$("year").addEventListener("change", render);
+$("sort").addEventListener("change", render);
+$("reset").addEventListener("click", () => {
+  $("search").value = "";
+  $("genre").value = "";
+  $("year").value = "";
+  $("sort").value = "recent";
+  render();
+});
+
+loadCatalog();
+</script>
+</body>
+</html>
