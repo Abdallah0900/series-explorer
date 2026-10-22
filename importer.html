@@ -1,0 +1,291 @@
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Series Explorer — استيراد البيانات</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#10151f;color:#f4f6fb;margin:0;padding:20px}
+main{max-width:760px;margin:auto}
+section{background:#191f2b;border:1px solid #30394a;border-radius:14px;padding:20px;margin:16px 0}
+h1{font-size:25px}
+p{line-height:1.9;color:#c3ccda}
+button{background:#62d5bd;color:#10201e;border:0;border-radius:9px;padding:13px 18px;font-weight:bold;font-size:15px;cursor:pointer;width:100%;margin:7px 0}
+button:disabled{opacity:.5}
+#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1018;padding:14px;border-radius:9px;line-height:1.8;font-size:13px;max-height:400px;overflow:auto}
+small{color:#9ba8bb}
+</style>
+</head>
+<body>
+<main>
+<h1>Series Explorer</h1>
+<p>أداة استيراد بيانات المسلسلات من واجهة الموقع العامة، ثم تنزيل ملف JSON لإضافته إلى المشروع.</p><section>
+<h2>الخطوة الأولى: الاتصال بالمصدر</h2>
+<p>اضغط الزر لتجربة قراءة تصنيفات المسلسلات من واجهة WordPress العامة.</p>
+<button id="test">اختبار الاتصال</button>
+</section><section>
+<h2>الخطوة الثانية: جمع البيانات</h2>
+<p>بعد نجاح الاختبار، اضغط الزر لجمع التصنيفات وصور المسلسلات المتاحة. قد تستغرق العملية بعض الوقت.</p>
+<button id="import" disabled>بدء جمع البيانات</button>
+</section><section>
+<h2>سجل العملية</h2>
+<div id="log">جاهز. ابدأ باختبار الاتصال.</div>
+</section><section>
+<h2>تنزيل البيانات</h2>
+<p>بعد نجاح الجمع، سيظهر زر تنزيل ملف catalog.json.</p>
+<button id="download" disabled>تنزيل catalog.json</button>
+</section><small>الأداة تقرأ البيانات العامة فقط. نجاحها يعتمد على سماح المصدر بالاتصال من المتصفح.</small>
+
+</main><script>
+"use strict";
+
+const API = "https://x.cima4p.com/wp-json/wp/v2";
+const logBox = document.getElementById("log");
+const testButton = document.getElementById("test");
+const importButton = document.getElementById("import");
+const downloadButton = document.getElementById("download");
+
+let catalog = null;
+let busy = false;
+
+function log(message) {
+  logBox.textContent += "\n" + message;
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+async function requestJSON(url) {
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    credentials: "omit",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+
+  return await response.json();
+}
+
+async function getPages(endpoint, maxPages = 100) {
+  const all = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const url = API + endpoint + separator +
+      "per_page=100&page=" + page;
+
+    const items = await requestJSON(url);
+
+    if (!Array.isArray(items) || items.length === 0) {
+      break;
+    }
+
+    all.push(...items);
+    log("تم استلام صفحة " + page + " — الإجمالي: " + all.length);
+
+    if (items.length < 100) {
+      break;
+    }
+  }
+
+  return all;
+}
+
+testButton.addEventListener("click", async () => {
+  if (busy) return;
+
+  busy = true;
+  testButton.disabled = true;
+  logBox.textContent = "جارٍ اختبار الاتصال...";
+
+  try {
+    const categories = await requestJSON(
+      API + "/categories?per_page=3&_fields=id,name,slug,link,count"
+    );
+
+    if (!Array.isArray(categories)) {
+      throw new Error("استجابة غير متوقعة من المصدر");
+    }
+
+    log("نجح الاتصال بالمصدر.");
+    log("عدد التصنيفات في الاختبار: " + categories.length);
+    log("يمكنك الآن تجربة جمع البيانات.");
+    importButton.disabled = false;
+  } catch (error) {
+    log("فشل الاتصال: " + error.message);
+    log("قد يكون السبب سياسة CORS أو رفض الاتصال من المصدر.");
+    log("لا يعني ذلك أن الرابط نفسه لا يعمل في المتصفح.");
+  } finally {
+    busy = false;
+    testButton.disabled = false;
+  }
+});
+
+importButton.addEventListener("click", async () => {
+  if (busy) return;
+
+  busy = true;
+  importButton.disabled = true;
+  testButton.disabled = true;
+  downloadButton.disabled = true;
+  logBox.textContent = "بدأ جمع البيانات...";
+
+  try {
+    log("1) تحميل التصنيفات...");
+
+    const categories = await getPages(
+      "/categories?_fields=id,name,slug,link,count"
+    );
+
+    log("إجمالي التصنيفات: " + categories.length);
+
+    const seriesCategories = categories.filter(category => {
+      const slug = String(category.slug || "").toLowerCase();
+      const link = String(category.link || "").toLowerCase();
+
+      return (
+        slug.startsWith("serie-") ||
+        link.includes("/video/category/")
+      ) && Number(category.count) > 0;
+    });
+
+    log("التصنيفات المرشحة للمسلسلات: " + seriesCategories.length);
+
+    if (!seriesCategories.length) {
+      throw new Error(
+        "لم يتم العثور على تصنيفات مسلسلات. قد تختلف بنية الموقع."
+      );
+    }
+
+    const series = [];
+    const episodes = [];
+    const limit = Math.min(seriesCategories.length, 500);
+
+    log("2) قراءة بيانات أحدث منشور لكل تصنيف...");
+    log("الحد الأقصى لهذه المحاولة: " + limit + " مسلسل.");
+
+    for (let i = 0; i < limit; i++) {
+      const category = seriesCategories[i];
+
+      try {
+        const posts = await requestJSON(
+          API + "/posts?categories=" + encodeURIComponent(category.id) +
+          "&per_page=1&orderby=date&order=desc" +
+          "&_fields=id,date,slug,title,link,featured_media,categories,tags"
+        );
+
+        let image = "";
+
+        if (Array.isArray(posts) && posts.length) {
+          const post = posts[0];
+
+          if (post.featured_media) {
+            try {
+              const media = await requestJSON(
+                API + "/media/" + encodeURIComponent(post.featured_media) +
+                "?_fields=source_url"
+              );
+              image = media.source_url || "";
+            } catch (error) {
+              log("تعذر جلب صورة: " + category.name);
+            }
+          }
+
+          episodes.push({
+            id: post.id,
+            title: post.title?.rendered
+              ? post.title.rendered.replace(/<[^>]*>/g, "").trim()
+              : category.name,
+            url: post.link || "",
+            date: post.date || "",
+            seriesCategoryId: category.id
+          });
+        }
+
+        const title = String(category.name || "")
+          .replace(/<[^>]*>/g, "")
+          .trim();
+
+        if (!title || !category.link) continue;
+
+        const existing = series.find(
+          item => item.url === category.link
+        );
+
+        if (!existing) {
+          const yearMatch = String(
+            posts?.[0]?.date || ""
+          ).match(/^(\d{4})/);
+
+          series.push({
+            title: title,
+            originalTitle: "",
+            aliases: [],
+            year: yearMatch ? Number(yearMatch[1]) : null,
+            genres: [],
+            episodeCount: Number(category.count) || 0,
+            updated: posts?.[0]?.date
+              ? posts[0].date.slice(0, 10)
+              : "",
+            image: image,
+            url: category.link
+          });
+        }
+
+        if ((i + 1) % 10 === 0 || i + 1 === limit) {
+          log("التقدم: " + (i + 1) + " / " + limit);
+        }
+      } catch (error) {
+        log("تعذر استيراد التصنيف: " + category.name +
+            " — " + error.message);
+      }
+    }
+
+    if (!series.length) {
+      throw new Error("لم يتم جمع أي مسلسل صالح.");
+    }
+
+    catalog = {
+      updatedAt: new Date().toISOString().slice(0, 10),
+      series: series,
+      episodes: episodes
+    };
+
+    log("انتهت عملية الجمع.");
+    log("عدد المسلسلات: " + series.length);
+    log("عدد المنشورات التي تم العثور عليها: " + episodes.length);
+    log("ملاحظة: عدد الحلقات مأخوذ من عدد منشورات التصنيف، وقد لا يساوي عدد الحلقات الفعلية.");
+
+    downloadButton.disabled = false;
+  } catch (error) {
+    log("تعذر إكمال الجمع: " + error.message);
+    log("إذا ظهر خطأ CORS أو HTTP 403، فلا يمكن لهذه الصفحة إكمال الاستيراد بهذه الطريقة.");
+  } finally {
+    busy = false;
+    importButton.disabled = false;
+    testButton.disabled = false;
+  }
+});
+
+downloadButton.addEventListener("click", () => {
+  if (!catalog) return;
+
+  const blob = new Blob(
+    [JSON.stringify(catalog, null, 2)],
+    { type: "application/json;charset=utf-8" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "catalog.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+</script></body>
+</html>
